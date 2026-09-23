@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>API IMEI Colombia</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0a0a0f;
+    --surface: #13131a;
+    --border:  #1e1e2e;
+    --accent:  #00ff88;
+    --danger:  #ff3e6c;
+    --warning: #ff9900;
+    --info:    #3e9eff;
+    --text:    #e8e8f0;
+    --muted:   #6b6b7e;
+    --mono:    'Space Mono', monospace;
+    --sans:    'Syne', sans-serif;
+    --pad:     clamp(16px, 4vw, 32px);
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(0,255,136,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none; z-index:0;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: clamp(24px, 6vw, 52px) var(--pad);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header { margin-bottom: clamp(28px, 5vw, 48px); }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: clamp(9px, 2vw, 10px);
+    letter-spacing: 3px;
+    color: var(--accent);
+    border: 1px solid rgba(0,255,136,.3);
+    display: inline-block;
+    padding: 4px 10px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(26px, 7vw, 52px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: clamp(10px, 2.5vw, 12px);
+    margin-top: 10px;
+    line-height: 1.7;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: clamp(16px, 4vw, 26px);
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: clamp(9px, 2vw, 11px);
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── Input ── */
+  .input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  @media (min-width: 480px) {
+    .input-wrap { flex-direction: row; }
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: clamp(14px, 3.5vw, 16px);
+    padding: 14px 16px;
+    letter-spacing: 2px;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+    min-height: 50px;
+  }
+  input[type="text"]:focus      { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); letter-spacing:1px; }
+
+  button {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: var(--mono);
+    font-size: clamp(11px, 2.5vw, 12px);
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    min-height: 50px;
+    width: 100%;
+  }
+  @media (min-width: 480px) { button { width: auto; } }
+  button:hover    { background: #00e07a; transform: translateY(-1px); }
+  button:active   { transform: translateY(0); }
+  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* ── Loading ── */
+  .loading {
+    display: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    padding: 14px 0 4px;
+  }
+  .loading::after { content:''; animation: dots 1.5s infinite; }
+  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+  /* ── Result ── */
+  .result { display: none; margin-top: 18px; }
+  .result.visible { display: block; animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  .status-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px; border: 1px solid; border-bottom: none;
+    flex-wrap: wrap;
+  }
+  .status-bar.LIMPIO                { border-color:var(--accent);  background:rgba(0,255,136,.06); }
+  .status-bar.ROBO_HURTO            { border-color:var(--danger);  background:rgba(255,62,108,.06); }
+  .status-bar.BLOQUEO_NO_REGISTRADO { border-color:var(--danger);  background:rgba(255,62,108,.06); }
+  .status-bar.DUPLICADO             { border-color:var(--warning); background:rgba(255,153,0,.06); }
+  .status-bar.REINCIDENTE           { border-color:var(--warning); background:rgba(255,153,0,.06); }
+  .status-bar.PERDIDA               { border-color:var(--danger);  background:rgba(255,62,108,.06); }
+  .status-bar.MULTIPLE              { border-color:var(--danger);  background:rgba(255,62,108,.06); }
+  .status-bar.OTRO                  { border-color:var(--warning); background:rgba(255,153,0,.06); }
+  .status-bar.ERROR                 { border-color:var(--muted);   background:rgba(107,107,126,.06); }
+
+  .status-dot {
+    width:10px; height:10px; border-radius:50%;
+    flex-shrink:0; animation:pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .LIMPIO .status-dot                { background:var(--accent); }
+  .ROBO_HURTO .status-dot            { background:var(--danger); }
+  .BLOQUEO_NO_REGISTRADO .status-dot { background:var(--danger); }
+  .DUPLICADO .status-dot             { background:var(--warning); }
+  .REINCIDENTE .status-dot           { background:var(--warning); }
+  .PERDIDA .status-dot               { background:var(--danger); }
+  .MULTIPLE .status-dot              { background:var(--danger); }
+  .ERROR .status-dot                 { background:var(--muted); animation:none; }
+
+  .status-label {
+    font-family:var(--mono);
+    font-size: clamp(12px, 3vw, 14px);
+    font-weight:700; letter-spacing:2px; flex:1;
+  }
+  .LIMPIO .status-label                { color:var(--accent); }
+  .ROBO_HURTO .status-label            { color:var(--danger); }
+  .BLOQUEO_NO_REGISTRADO .status-label { color:var(--danger); }
+  .DUPLICADO .status-label             { color:var(--warning); }
+  .REINCIDENTE .status-label           { color:var(--warning); }
+  .PERDIDA .status-label               { color:var(--danger); }
+  .MULTIPLE .status-label              { color:var(--danger); }
+  .ERROR .status-label                 { color:var(--muted); }
+
+  .status-badge {
+    font-family:var(--mono); font-size:10px;
+    font-weight:700; padding:2px 7px; border:1px solid;
+  }
+
+  .data-block { border:1px solid var(--border); overflow:hidden; }
+  .data-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-row:last-child { border-bottom: none; }
+  @media (max-width: 380px) { .data-row { grid-template-columns: 90px 1fr; } }
+
+  .data-key {
+    font-family:var(--mono); font-size:clamp(9px,2vw,10px);
+    color:var(--muted); letter-spacing:1px; text-transform:uppercase;
+    padding:10px 12px; background:rgba(255,255,255,.02);
+    border-right:1px solid var(--border);
+    display:flex; align-items:center; word-break:break-word;
+  }
+  .data-val {
+    font-family:var(--mono); font-size:clamp(11px,2.5vw,12px);
+    color:var(--text); padding:10px 12px;
+    word-break:break-word; line-height:1.5;
+  }
+  .data-val.green { color:var(--accent); }
+  .data-val.red   { color:var(--danger); }
+
+  .tags { display:flex; flex-wrap:wrap; gap:6px; padding:9px 12px; }
+  .tag {
+    font-family:var(--mono); font-size:clamp(9px,2vw,10px);
+    font-weight:700; padding:3px 7px; letter-spacing:.5px;
+  }
+  .tag.danger  { background:rgba(255,62,108,.12);  color:var(--danger);  border:1px solid rgba(255,62,108,.3); }
+  .tag.warning { background:rgba(255,153,0,.12);   color:var(--warning); border:1px solid rgba(255,153,0,.3); }
+  .tag.info    { background:rgba(62,158,255,.12);  color:var(--info);    border:1px solid rgba(62,158,255,.3); }
+  .tag.muted   { background:rgba(107,107,126,.12); color:var(--muted);   border:1px solid rgba(107,107,126,.3); }
+
+  .reportes-header {
+    font-family:var(--mono); font-size:clamp(9px,2vw,10px);
+    color:var(--danger); letter-spacing:1.5px; text-transform:uppercase;
+    padding:7px 12px; background:rgba(255,62,108,.06);
+    border-top:1px solid rgba(255,62,108,.25);
+    border-bottom:1px solid rgba(255,62,108,.25);
+  }
+  .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .reportes-table { width:100%; border-collapse:collapse; min-width:300px; }
+  .reportes-table th {
+    font-family:var(--mono); font-size:clamp(8px,2vw,9px);
+    color:var(--muted); letter-spacing:1.5px; text-transform:uppercase;
+    text-align:left; padding:8px 12px;
+    border-bottom:1px solid var(--border);
+    background:rgba(255,255,255,.02); white-space:nowrap;
+  }
+  .reportes-table td {
+    font-family:var(--mono); font-size:clamp(10px,2.5vw,11px);
+    padding:9px 12px; border-bottom:1px solid var(--border);
+    vertical-align:top; word-break:break-word;
+  }
+  .reportes-table tr:last-child td { border-bottom:none; }
+  .reportes-table .num { color:var(--muted); width:26px; }
+
+  .causal-chip {
+    display:inline-block; font-family:var(--mono);
+    font-size:clamp(8px,2vw,9px); font-weight:700;
+    letter-spacing:.5px; padding:2px 6px; border:1px solid; margin-bottom:2px;
+  }
+  .causal-chip.danger  { background:rgba(255,62,108,.12); color:var(--danger);  border-color:rgba(255,62,108,.35); }
+  .causal-chip.warning { background:rgba(255,153,0,.12);  color:var(--warning); border-color:rgba(255,153,0,.35); }
+  .causal-chip.muted   { background:rgba(107,107,126,.12);color:var(--muted);   border-color:rgba(107,107,126,.35); }
+  .causal-sub { color:var(--muted); font-size:10px; margin-top:2px; }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 40px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: clamp(9px, 2vw, 10px);
+    color: var(--muted);
+    display: flex; flex-wrap: wrap;
+    justify-content: space-between; gap: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="badge">v2.1.0 · SRTM Colombia</div>
+    <h1>API IMEI<br><span>Colombia</span></h1>
+    <p class="subtitle">
+      Consulta el estado de equipos móviles en la<br>
+      Base de Datos Negativa · Resolución CRC 3128 de 2011
+    </p>
+  </header>
+
+  <!-- Consulta individual -->
+  <div class="card">
+    <div class="card-title">// Consultar IMEI</div>
+    <div class="input-wrap">
+      <input type="text" id="imeiInput" placeholder="353265110903640"
+             maxlength="15" inputmode="numeric"
+             onkeydown="if(event.key==='Enter') consultar()" autocomplete="off">
+      <button onclick="consultar()" id="btnConsultar">Consultar</button>
+    </div>
+    <div class="loading" id="loading">Consultando SRTM</div>
+    <div class="result" id="result"></div>
+  </div>
+
+  <footer>
+    <span>Fuente: imeicolombia.com.co · Inetum · CRC</span>
+    <span>FastAPI 2.1.0</span>
+  </footer>
+
+</div>
+
+<script>
+const BASE = '';
+
+const ESTADOS = {
+  LIMPIO:                { label:'✓ LIMPIO',             cls:'c-green'   },
+  ROBO_HURTO:            { label:'✗ ROBO / HURTO',       cls:'c-red'     },
+  BLOQUEO_NO_REGISTRADO: { label:'✗ BLOQUEO / NO REG.',  cls:'c-red'     },
+  DUPLICADO:             { label:'⚠ DUPLICADO',          cls:'c-warning' },
+  REINCIDENTE:           { label:'⚠ REINCIDENTE',        cls:'c-warning' },
+  PERDIDA:               { label:'✗ PÉRDIDA',            cls:'c-red'     },
+  MULTIPLE:              { label:'⚠ MÚLTIPLES REPORTES', cls:'c-red'     },
+  OTRO:                  { label:'⚠ OTRO',               cls:'c-warning' },
+  ERROR:                 { label:'? ERROR',              cls:'c-muted'   },
+};
+
+function estadoInfo(e) { return ESTADOS[e] || { label:e, cls:'c-muted' }; }
+
+function causalCls(c) {
+  if (['ROBO_HURTO','BLOQUEO_NO_REGISTRADO','PERDIDA'].includes(c)) return 'danger';
+  if (['DUPLICADO','REINCIDENTE'].includes(c)) return 'warning';
+  return 'muted';
+}
+
+function renderResult(data, container) {
+  const estado = data.estado || 'ERROR';
+  const info   = estadoInfo(estado);
+
+  let badge = data.total_reportes > 1
+    ? `<span class="status-badge" style="border-color:currentColor;color:inherit">${data.total_reportes} reportes</span>`
+    : '';
+
+  let rows = `
+    <div class="data-row">
+      <div class="data-key">IMEI</div>
+      <div class="data-val">${data.imei || '—'}</div>
+    </div>
+    <div class="data-row">
+      <div class="data-key">ESTADO</div>
+      <div class="data-val ${info.cls}">${info.label}</div>
+    </div>
+    <div class="data-row">
+      <div class="data-key">BASE NEG.</div>
+      <div class="data-val ${data.en_base_negativa ? 'red' : 'green'}">
+        ${data.en_base_negativa ? 'Sí — equipo bloqueado' : 'No — equipo libre'}
+      </div>
+    </div>
+  `;
+
+  if (data.causales?.length) {
+    rows += `<div class="data-row"><div class="data-key">CAUSALES</div>
+      <div class="data-val" style="padding:8px 12px">
+        ${data.causales.map(c=>`<span class="tag ${causalCls(c)}">${c.replaceAll('_','/')}</span>`).join('')}
+      </div></div>`;
+  }
+
+  if (data.operadores?.length) {
+    rows += `<div class="data-row"><div class="data-key">OPERADORES</div>
+      <div class="data-val" style="padding:8px 12px">
+        ${data.operadores.map(o=>`<span class="tag info">${o}</span>`).join('')}
+      </div></div>`;
+  }
+
+  rows += `<div class="data-row"><div class="data-key">RESUMEN</div>
+    <div class="data-val">${data.resumen || '—'}</div></div>`;
+
+  let reportesHtml = '';
+  if (data.reportes?.length) {
+    const filas = data.reportes.map((r,i) => `
+      <tr>
+        <td class="num">${i+1}</td>
+        <td>
+          <div class="causal-chip ${causalCls(r.causal)}">${r.causal.replaceAll('_','/')}</div>
+          <div class="causal-sub">${r.causal_texto}</div>
+        </td>
+        <td>${r.operador}</td>
+      </tr>`).join('');
+    reportesHtml = `
+      <div class="reportes-header">// DETALLE (${data.total_reportes})</div>
+      <div class="table-scroll">
+        <table class="reportes-table">
+          <thead><tr><th>#</th><th>CAUSAL</th><th>OPERADOR</th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>`;
+  }
+
+  container.className = 'result visible';
+  container.innerHTML = `
+    <div class="status-bar ${estado}">
+      <div class="status-dot"></div>
+      <div class="status-label ${info.cls}">${info.label}</div>
+      ${badge}
+    </div>
+    <div class="data-block">${rows}${reportesHtml}</div>`;
+}
+
+// Debounce para evitar spam del botón
+let _consultando = false;
+
+async function consultar() {
+  if (_consultando) return;
+  const imei = document.getElementById('imeiInput').value.replace(/\D/g,'').slice(0,15);
+  if (imei.length !== 15) {
+    document.getElementById('imeiInput').style.borderColor = 'var(--danger)';
+    setTimeout(() => document.getElementById('imeiInput').style.borderColor = '', 1200);
+    return;
+  }
+
+  _consultando = true;
+  const btn     = document.getElementById('btnConsultar');
+  const loading = document.getElementById('loading');
+  const result  = document.getElementById('result');
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  result.className = 'result';
+
+  try {
+    const res  = await fetch(`${BASE}/imei/${imei}`, { headers:{ 'Accept':'application/json' } });
+    if (res.status === 429) {
+      renderResult({ imei, estado:'ERROR', en_base_negativa:false,
+        causales:[], operadores:[], reportes:[], total_reportes:0,
+        resumen:'Demasiadas consultas. Espera un momento e inténtalo de nuevo.' }, result);
+      return;
+    }
+    const data = await res.json();
+    renderResult(data, result);
+  } catch {
+    renderResult({ imei, estado:'ERROR', en_base_negativa:false,
+      causales:[], operadores:[], reportes:[], total_reportes:0,
+      resumen:'No se pudo conectar con el servidor.' }, result);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+    _consultando = false;
+  }
+}
+</script>
+</body>
+</html>
