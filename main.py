@@ -1,6 +1,9 @@
-# main.py — API IMEI Colombia v2.1.0
+# main.py — API IMEI Colombia v2.1.1
 # Seguridad: rate limiting, bloqueo de IPs, validación estricta, headers de seguridad
+# v2.1.1: manejo de errores robusto (path absoluto, try/except en llamadas SRTM,
+#         exception handler global con logging)
 
+import os
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -28,6 +31,11 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# ─── Rutas base (fix: usar ruta absoluta, no depender del cwd) ────────────────
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INDEX_HTML_PATH = os.path.join(BASE_DIR, "index.html")
 
 # ─── Rate Limiter (slowapi) ───────────────────────────────────────────────────
 # Instala con: pip install slowapi
@@ -79,7 +87,7 @@ ip_blocker = IPBlocker()
 
 app = FastAPI(
     title="API IMEI Colombia",
-    version="2.1.0",
+    version="2.1.1",
     # Deshabilitar docs en producción para no exponer endpoints
     docs_url=None,
     redoc_url=None,
@@ -98,6 +106,18 @@ app.add_middleware(
     allow_headers=["Accept", "Content-Type"],
     max_age=3600,
 )
+
+# ─── Exception handler global (fix: loguea y responde 500 controlado) ─────────
+# Sin esto, cualquier excepción no capturada se propaga como un 500 "pelado"
+# sin registro de la causa real. Con esto queda en el log el traceback completo.
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Error no controlado en {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Error interno del servidor."}
+    )
 
 # ─── Middleware de seguridad ───────────────────────────────────────────────────
 
@@ -151,8 +171,11 @@ async def security_middleware(request: Request, call_next):
         "script-src 'self' 'unsafe-inline';"
     )
     # Quitar header que revela el servidor
-    response.headers.pop("server", None)
-    response.headers.pop("x-powered-by", None)
+    # fix: MutableHeaders de Starlette no tiene .pop(); usar del con chequeo
+    if "server" in response.headers:
+        del response.headers["server"]
+    if "x-powered-by" in response.headers:
+        del response.headers["x-powered-by"]
 
     return response
 
@@ -208,8 +231,15 @@ def extraer_causal_texto(celda) -> str:
 # ─── Parser ───────────────────────────────────────────────────────────────────
 
 def parsear_respuesta(imei: str, html: str) -> IMEIResponse:
-    soup  = BeautifulSoup(html, 'html.parser')
-    filas = soup.find_all('tr', class_='azlc')
+    try:
+        soup  = BeautifulSoup(html, 'html.parser')
+        filas = soup.find_all('tr', class_='azlc')
+    except Exception as e:
+        logger.error(f"Error parseando HTML de SRTM para IMEI {imei[:6]}*******: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="No se pudo interpretar la respuesta del servicio SRTM."
+        )
 
     if not filas:
         return IMEIResponse(
@@ -279,13 +309,31 @@ def consultar_imei_srtm(imei: str) -> IMEIResponse:
         "Referer": "https://www.imeicolombia.com.co/",
         "Origin":  "https://www.imeicolombia.com.co",
     }
-    session = requests.Session()
-    session.get("https://www.imeicolombia.com.co/",
-                headers=headers, timeout=10, verify=False)
-    response = session.post(
-        "https://www.imeicolombia.com.co/Consulta",
-        data={"IMEI": imei}, headers=headers, timeout=15, verify=False
-    )
+
+    # fix: try/except alrededor de las llamadas de red al sitio SRTM.
+    # Cualquier timeout, error de conexión o SSL aquí antes no se capturaba
+    # y terminaba como un 500 sin explicación.
+    try:
+        session = requests.Session()
+        session.get("https://www.imeicolombia.com.co/",
+                    headers=headers, timeout=10, verify=False)
+        response = session.post(
+            "https://www.imeicolombia.com.co/Consulta",
+            data={"IMEI": imei}, headers=headers, timeout=15, verify=False
+        )
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout consultando SRTM para IMEI {imei[:6]}*******")
+        raise HTTPException(
+            status_code=504,
+            detail="El servicio SRTM tardó demasiado en responder. Intenta nuevamente."
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error de red consultando SRTM para IMEI {imei[:6]}*******: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="No se pudo contactar el servicio SRTM. Intenta más tarde."
+        )
+
     response.encoding = 'iso-8859-1'
     if response.status_code != 200:
         raise HTTPException(
@@ -301,8 +349,13 @@ def validar_imei(imei: str) -> bool:
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    # fix: ruta absoluta en vez de relativa al cwd del proceso
+    try:
+        with open(INDEX_HTML_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        logger.error(f"index.html no encontrado en {INDEX_HTML_PATH}")
+        raise HTTPException(status_code=500, detail="Archivo index.html no encontrado en el servidor.")
 
 
 @app.get("/imei/{imei}", response_model=IMEIResponse, include_in_schema=False)
@@ -329,4 +382,4 @@ async def consultar_imei(imei: str, request: Request):
 @app.get("/health", include_in_schema=False)
 @limiter.limit("30/minute")
 async def health(request: Request):
-    return {"status": "ok", "version": "2.1.0"}
+    return {"status": "ok", "version": "2.1.1"}
