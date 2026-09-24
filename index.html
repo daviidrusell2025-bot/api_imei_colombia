@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <title>API IMEI Colombia</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-  <style>
+<style>
   /* ═══ Tema oscuro (por defecto) ═══ */
   :root {
     --bg:      #0a0a0f;
@@ -173,122 +173,6 @@
     :root:not([data-theme]) .theme-toggle .icon-moon { display:block; }
   }
 
-
-  /* ═══ UI móvil / escáner QR ═══ */
-  .mobile-hero {
-    display:flex; align-items:center; gap:14px; margin:-4px 0 18px;
-    padding:14px 16px; border:1px solid var(--border);
-    background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--surface)), var(--surface));
-    border-radius:16px;
-  }
-  .hero-icon {
-    width:44px; height:44px; flex:0 0 44px; border-radius:12px;
-    display:grid; place-items:center; background:var(--accent); color:var(--accent-contrast);
-  }
-  .hero-icon svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:2; }
-  .hero-copy strong { display:block; font-size:14px; margin-bottom:3px; }
-  .hero-copy span { color:var(--muted); font-family:'Space Mono',monospace; font-size:10px; line-height:1.45; }
-
-  .card { border-radius:18px; box-shadow:0 8px 30px rgba(0,0,0,.08); }
-  .card::before { border-radius:18px 18px 0 0; }
-  .input-wrap { gap:10px; }
-  input[type="text"], button { border-radius:12px; }
-  input[type="text"] { min-height:54px; }
-  button { min-height:54px; border-radius:12px; }
-
-  .action-grid {
-    display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;
-  }
-  .action-btn {
-    width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
-    min-height:50px; padding:12px 10px; border:1px solid var(--border);
-    background:var(--surface); color:var(--text); text-transform:none;
-    letter-spacing:.5px; font-size:11px; border-radius:12px;
-  }
-  .action-btn.primary {
-    background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);
-  }
-  .action-btn:hover:not(:disabled) { filter:brightness(1.05); transform:translateY(-1px); }
-  .action-btn svg { width:19px; height:19px; flex:0 0 19px; stroke:currentColor; fill:none; stroke-width:2; }
-
-  .qr-panel {
-    display:none; margin-top:14px; overflow:hidden; border:1px solid var(--border);
-    border-radius:16px; background:var(--bg);
-  }
-  .qr-panel.visible { display:block; animation:fadeIn .2s ease; }
-  .qr-head {
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:12px 14px; border-bottom:1px solid var(--border);
-  }
-  .qr-head strong { font-size:12px; }
-  .qr-close {
-    width:36px; min-height:36px; height:36px; padding:0; border-radius:10px;
-    background:transparent; color:var(--text); border:1px solid var(--border);
-    display:grid; place-items:center;
-  }
-  .qr-close svg { width:17px; height:17px; }
-  .qr-camera {
-    position:relative; width:100%; aspect-ratio:1/1; overflow:hidden;
-    background:#000;
-  }
-  .qr-camera video {
-    width:100%; height:100%; display:block; object-fit:cover;
-  }
-  .qr-frame {
-    position:absolute; width:min(62vw,240px); height:min(62vw,240px);
-    left:50%; top:50%; transform:translate(-50%,-50%);
-    border:2px solid var(--accent); border-radius:20px;
-    box-shadow:0 0 0 9999px rgba(0,0,0,.28), 0 0 24px color-mix(in srgb,var(--accent) 55%,transparent);
-    pointer-events:none;
-  }
-  .qr-frame::after {
-    content:''; position:absolute; left:12%; right:12%; top:50%; height:2px;
-    background:var(--accent); box-shadow:0 0 12px var(--accent);
-    animation:qrScan 1.8s ease-in-out infinite;
-  }
-  @keyframes qrScan { 0%,100%{transform:translateY(-75px);opacity:.35} 50%{transform:translateY(75px);opacity:1} }
-  .qr-camera-status {
-    position:absolute; left:12px; right:12px; bottom:12px;
-    padding:8px 10px; border:1px solid rgba(255,255,255,.14);
-    border-radius:10px; background:rgba(0,0,0,.62); color:#fff;
-    font-family:'Space Mono',monospace; font-size:9px; text-align:center;
-  }
-  .qr-help {
-    padding:0 14px 14px; color:var(--muted); font-family:'Space Mono',monospace;
-    font-size:9px; line-height:1.5; text-align:center;
-  }
-
-  .result { scroll-margin-top:20px; }
-  .status-bar, .data-block { border-radius:12px; }
-  .status-bar { border-bottom:1px solid; margin-bottom:8px; }
-  .data-block { overflow:hidden; }
-  .reportes-header { border-radius:0; }
-
-  @media (max-width:480px) {
-    .container { padding:18px 14px 28px; }
-    header { margin-bottom:22px; align-items:center; }
-    .badge { margin-bottom:9px; }
-    h1 { font-size:31px; letter-spacing:-1.5px; }
-    .subtitle { font-size:9px; margin-top:7px; }
-    .subtitle br { display:none; }
-    .theme-toggle { width:42px; height:42px; min-height:42px; border-radius:12px; }
-    .mobile-hero { margin-bottom:12px; }
-    .card { padding:15px; margin-bottom:14px; }
-    .card-title { margin-bottom:13px; }
-    .input-wrap { flex-direction:column; }
-    .input-wrap button { width:100%; }
-    .action-grid { grid-template-columns:1fr 1fr; }
-    .action-btn { font-size:10px; }
-    .data-row { grid-template-columns:92px 1fr; }
-    .data-key, .data-val { padding:10px; }
-    footer { margin-top:25px; }
-  }
-
-  @media (max-width:360px) {
-    .action-grid { grid-template-columns:1fr; }
-    .hero-copy span { font-size:9px; }
-  }
-
   /* ── Card ── */
   .card {
     background:var(--surface); border:1px solid var(--border);
@@ -338,6 +222,16 @@
   button:hover:not(:disabled)   { filter:brightness(1.1); transform:translateY(-1px); }
   button:active:not(:disabled) { transform:translateY(0); }
   button:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+
+  /* ── Escáner QR ── */
+  #scannerPanel { display:none; margin-top:14px; border:1px solid var(--accent); background:var(--bg); padding:12px; }
+  #scannerPanel.visible { display:block; }
+  #qrReader { width:100%; max-width:520px; margin:0 auto; overflow:hidden; }
+  .scanner-title { font-family:'Space Mono',monospace; font-size:10px; color:var(--accent); letter-spacing:1.5px; margin-bottom:10px; }
+  .scanner-message { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); line-height:1.6; margin-top:10px; }
+  .scanner-close { margin-top:10px; width:100%; background:transparent; color:var(--text); border:1px solid var(--border); }
+  .scanner-close:hover:not(:disabled) { border-color:var(--accent); }
+  @media(min-width:480px){ #btnEscanear { width:auto; } }
 
   /* ── Error de validación ── */
   .input-error {
@@ -525,16 +419,6 @@
   </header>
 
   <main id="main">
-    <section class="mobile-hero" aria-label="Consulta rápida">
-      <div class="hero-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM19 15h1v1h-1zM15 19h2v1h-2zM19 18h1v2h-1z"/></svg>
-      </div>
-      <div class="hero-copy">
-        <strong>Consulta tu IMEI fácilmente</strong>
-        <span>Escríbelo o escanea el código QR de tu equipo.</span>
-      </div>
-    </section>
-
     <form class="card" id="imeiForm" novalidate>
       <div class="card-title">// Consultar IMEI</div>
       <label for="imeiInput" class="field-label">Número IMEI (15 dígitos)</label>
@@ -549,38 +433,18 @@
                aria-describedby="inputError"
                aria-invalid="false"
                oninput="limpiarError()">
+        <button type="button" id="btnEscanear" onclick="solicitarCamara()">📷 Escanear QR</button>
         <button type="submit" id="btnConsultar">
-          <span id="btnLabel">Consultar IMEI</span>
+          <span id="btnLabel">Consultar</span>
         </button>
       </div>
-
-      <div class="action-grid">
-        <button type="button" class="action-btn primary" id="btnScanQR" aria-expanded="false" aria-controls="qrPanel">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM14 14h2v2h-2zM18 18h1"/></svg>
-          <span>Escanear QR</span>
-        </button>
-        <button type="button" class="action-btn" id="btnPaste" aria-label="Pegar IMEI desde el portapapeles">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="15" rx="2"/><path d="M9 5V4h6v1M9 10h6M9 14h6"/></svg>
-          <span>Pegar IMEI</span>
-        </button>
-      </div>
-
-      <div class="qr-panel" id="qrPanel" aria-hidden="true">
-        <div class="qr-head">
-          <strong>Escanear código QR</strong>
-          <button type="button" class="qr-close" id="btnCloseQR" aria-label="Cerrar escáner">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-          </button>
-        </div>
-        <div class="qr-camera">
-          <video id="qrVideo" playsinline muted autoplay aria-label="Vista de la cámara para escanear el código QR"></video>
-          <div class="qr-frame" aria-hidden="true"></div>
-          <div class="qr-camera-status" id="qrCameraStatus">Iniciando cámara…</div>
-        </div>
-        <div class="qr-help">Permite el acceso a la cámara y coloca el código QR dentro del recuadro. Solo se aceptan IMEI de 15 dígitos.</div>
-      </div>
-
       <p class="input-error" id="inputError" role="alert"></p>
+      <div id="scannerPanel" aria-live="polite">
+        <div class="scanner-title">// ESCANEAR CÓDIGO QR</div>
+        <div id="qrReader"></div>
+        <p class="scanner-message" id="scannerMessage">Apunta la cámara trasera al código QR del IMEI.</p>
+        <button type="button" class="scanner-close" onclick="cerrarEscaner()">Cerrar cámara</button>
+      </div>
       <p class="loading" id="loading" role="status" aria-live="polite">
         <span class="loading-dot" aria-hidden="true"></span><span class="loading-dot" aria-hidden="true"></span><span class="loading-dot" aria-hidden="true"></span>
         Consultando SRTM
@@ -596,7 +460,101 @@
 
 </div>
 
+<script src="https://unpkg.com/html5-qrcode" defer></script>
 <script>
+// ── Cámara y escáner QR ───────────────────────────────────────────────────────
+let qrScanner = null;
+let cameraStream = null;
+
+async function solicitarCamara() {
+  const btn = document.getElementById('btnEscanear');
+  btn.disabled = true;
+  limpiarError();
+
+  if (!window.isSecureContext) {
+    mostrarError('Para usar la cámara, abre la página mediante HTTPS (o localhost en desarrollo).');
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    // Solicitud explícita del permiso de cámara. Preferimos la cámara trasera.
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+
+    // El stream temporal solo se usa para obtener el permiso.
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+
+    abrirEscanerQR();
+  } catch (error) {
+    console.error('Error de cámara:', error);
+    cameraStream?.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+
+    let mensaje = 'No fue posible acceder a la cámara.';
+    if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+      mensaje = 'No diste permiso para usar la cámara. Permite el acceso en los permisos del navegador y vuelve a pulsar “Escanear QR”.';
+    } else if (error.name === 'NotFoundError') {
+      mensaje = 'No se encontró una cámara disponible en este dispositivo.';
+    } else if (error.name === 'NotReadableError') {
+      mensaje = 'La cámara está siendo utilizada por otra aplicación. Ciérrala e inténtalo nuevamente.';
+    }
+    mostrarError(mensaje);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function abrirEscanerQR() {
+  const panel = document.getElementById('scannerPanel');
+  const message = document.getElementById('scannerMessage');
+  panel.className = 'visible';
+  message.textContent = 'Apunta la cámara trasera al código QR del IMEI.';
+
+  try {
+    if (typeof Html5Qrcode === 'undefined') throw new Error('No se pudo cargar el escáner QR.');
+    qrScanner = new Html5Qrcode('qrReader');
+    await qrScanner.start(
+      { facingMode: { ideal: 'environment' } },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => procesarQR(decodedText),
+      () => {}
+    );
+  } catch (error) {
+    console.error('Error iniciando escáner:', error);
+    cerrarEscaner();
+    mostrarError('No se pudo iniciar la cámara. Verifica los permisos del navegador e inténtalo nuevamente.');
+  }
+}
+
+function procesarQR(texto) {
+  const imei = sanitizarImei(texto);
+  if (!validarImei(imei)) {
+    document.getElementById('scannerMessage').textContent = 'El QR no contiene un IMEI válido de 15 dígitos.';
+    return;
+  }
+
+  inputEl.value = imei;
+  limpiarError();
+  cerrarEscaner();
+  inputEl.focus();
+  // Importante: NO se consulta automáticamente. El usuario pulsa “Consultar”.
+}
+
+async function cerrarEscaner() {
+  if (qrScanner) {
+    try { await qrScanner.stop(); } catch (e) {}
+    try { qrScanner.clear(); } catch (e) {}
+    qrScanner = null;
+  }
+  cameraStream?.getTracks().forEach(track => track.stop());
+  cameraStream = null;
+  document.getElementById('scannerPanel').className = '';
+}
+
 // ── Tema: respeta preferencia del sistema, permite override manual persistente ──
 
 const THEME_KEY = 'imei-colombia-theme';
@@ -872,163 +830,12 @@ async function consultar(ev) {
     }, result);
   } finally {
     btn.disabled          = false;
-    btnLabel.textContent  = 'Consultar IMEI';
+    btnLabel.textContent  = 'Consultar';
     loading.className     = 'loading';
     _consultando          = false;
     result.focus?.();
   }
 }
-
-
-// ── Escáner QR móvil ──────────────────────────────────────────────────────────
-const qrPanel = document.getElementById('qrPanel');
-const btnScanQR = document.getElementById('btnScanQR');
-const btnCloseQR = document.getElementById('btnCloseQR');
-const qrVideo = document.getElementById('qrVideo');
-const qrCameraStatus = document.getElementById('qrCameraStatus');
-
-let qrStream = null;
-let qrActivo = false;
-let qrFrameRequest = null;
-let qrDetector = null;
-let qrProcesando = false;
-
-function actualizarEstadoQR(texto) {
-  qrCameraStatus.textContent = texto;
-}
-
-async function iniciarEscanerQR() {
-  if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-    mostrarError('La cámara requiere una conexión segura (HTTPS).');
-    return;
-  }
-
-  if (!('BarcodeDetector' in window)) {
-    mostrarError('Este navegador no admite escaneo QR directo. Usa Chrome/Edge actualizado en el celular.');
-    return;
-  }
-
-  try {
-    const formatos = await BarcodeDetector.getSupportedFormats();
-    if (!formatos.includes('qr_code')) {
-      throw new Error('QR no compatible');
-    }
-
-    qrDetector = new BarcodeDetector({ formats: ['qr_code'] });
-
-    qrStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      audio: false
-    });
-
-    qrVideo.srcObject = qrStream;
-    await qrVideo.play();
-    qrActivo = true;
-    actualizarEstadoQR('Apunta al código QR del IMEI');
-    escanearFrameQR();
-  } catch (error) {
-    console.error('Error al abrir cámara:', error);
-    detenerEscanerQR();
-    mostrarError('No fue posible acceder a la cámara. Verifica el permiso del navegador y vuelve a intentarlo.');
-  }
-}
-
-async function escanearFrameQR() {
-  if (!qrActivo || !qrDetector || !qrVideo.videoWidth) return;
-
-  if (!qrProcesando) {
-    qrProcesando = true;
-    try {
-      const codigos = await qrDetector.detect(qrVideo);
-      if (codigos.length) {
-        const valor = codigos[0].rawValue || '';
-        const imei = sanitizarImei(valor);
-
-        if (validarImei(imei)) {
-          inputEl.value = imei;
-          limpiarError();
-          actualizarEstadoQR('✓ IMEI detectado');
-          detenerEscanerQR();
-          inputEl.focus();
-          return;
-        }
-
-        actualizarEstadoQR('QR detectado, pero no contiene un IMEI de 15 dígitos');
-      }
-    } catch (error) {
-      // Continúa intentando en el siguiente frame.
-    } finally {
-      qrProcesando = false;
-    }
-  }
-
-  if (qrActivo) {
-    qrFrameRequest = requestAnimationFrame(escanearFrameQR);
-  }
-}
-
-function detenerEscanerQR() {
-  qrActivo = false;
-  qrProcesando = false;
-
-  if (qrFrameRequest) {
-    cancelAnimationFrame(qrFrameRequest);
-    qrFrameRequest = null;
-  }
-
-  if (qrStream) {
-    qrStream.getTracks().forEach(track => track.stop());
-    qrStream = null;
-  }
-
-  qrVideo.srcObject = null;
-}
-
-async function abrirQR() {
-  limpiarError();
-  qrPanel.className = 'qr-panel visible';
-  qrPanel.setAttribute('aria-hidden', 'false');
-  btnScanQR.setAttribute('aria-expanded', 'true');
-  actualizarEstadoQR('Solicitando acceso a la cámara…');
-  await iniciarEscanerQR();
-}
-
-function cerrarQR() {
-  detenerEscanerQR();
-  qrPanel.className = 'qr-panel';
-  qrPanel.setAttribute('aria-hidden', 'true');
-  btnScanQR.setAttribute('aria-expanded', 'false');
-}
-
-btnScanQR.addEventListener('click', abrirQR);
-btnCloseQR.addEventListener('click', cerrarQR);
-
-btnPaste.addEventListener('click', async () => {
-  try {
-    const text = await navigator.clipboard.readText();
-    const imei = sanitizarImei(text);
-    if (!imei) {
-      mostrarError('El portapapeles no contiene un IMEI.');
-      return;
-    }
-    inputEl.value = imei;
-    limpiarError();
-    inputEl.focus();
-  } catch (e) {
-    inputEl.focus();
-    mostrarError('No se pudo acceder al portapapeles. Pega el IMEI manualmente.');
-  }
-});
-
-window.addEventListener('pagehide', () => {
-  if (qrScanner && qrActivo) qrScanner.stop().catch(() => {});
-});
-
-window.addEventListener('pagehide', detenerEscanerQR);
 
 document.getElementById('imeiForm').addEventListener('submit', consultar);
 </script>
