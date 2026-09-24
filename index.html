@@ -6,8 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <title>API IMEI Colombia</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
-<style>
+  <style>
   /* ═══ Tema oscuro (por defecto) ═══ */
   :root {
     --bg:      #0a0a0f;
@@ -228,15 +227,32 @@
     display:grid; place-items:center;
   }
   .qr-close svg { width:17px; height:17px; }
-  #qr-reader { width:100%; border:0 !important; }
-  #qr-reader video { width:100% !important; height:auto !important; max-height:58vh; object-fit:cover; }
-  #qr-reader__dashboard { padding:12px !important; font-family:'Space Mono',monospace !important; }
-  #qr-reader__dashboard button {
-    width:100% !important; margin:5px 0 !important; border-radius:10px !important;
-    background:var(--accent) !important; color:var(--accent-contrast) !important;
-    border:0 !important; min-height:44px !important;
+  .qr-camera {
+    position:relative; width:100%; aspect-ratio:1/1; overflow:hidden;
+    background:#000;
   }
-  #qr-reader__status_span { color:var(--muted) !important; font-size:10px !important; }
+  .qr-camera video {
+    width:100%; height:100%; display:block; object-fit:cover;
+  }
+  .qr-frame {
+    position:absolute; width:min(62vw,240px); height:min(62vw,240px);
+    left:50%; top:50%; transform:translate(-50%,-50%);
+    border:2px solid var(--accent); border-radius:20px;
+    box-shadow:0 0 0 9999px rgba(0,0,0,.28), 0 0 24px color-mix(in srgb,var(--accent) 55%,transparent);
+    pointer-events:none;
+  }
+  .qr-frame::after {
+    content:''; position:absolute; left:12%; right:12%; top:50%; height:2px;
+    background:var(--accent); box-shadow:0 0 12px var(--accent);
+    animation:qrScan 1.8s ease-in-out infinite;
+  }
+  @keyframes qrScan { 0%,100%{transform:translateY(-75px);opacity:.35} 50%{transform:translateY(75px);opacity:1} }
+  .qr-camera-status {
+    position:absolute; left:12px; right:12px; bottom:12px;
+    padding:8px 10px; border:1px solid rgba(255,255,255,.14);
+    border-radius:10px; background:rgba(0,0,0,.62); color:#fff;
+    font-family:'Space Mono',monospace; font-size:9px; text-align:center;
+  }
   .qr-help {
     padding:0 14px 14px; color:var(--muted); font-family:'Space Mono',monospace;
     font-size:9px; line-height:1.5; text-align:center;
@@ -556,8 +572,12 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </div>
-        <div id="qr-reader"></div>
-        <div class="qr-help">Permite el acceso a la cámara y coloca el código QR dentro del recuadro.</div>
+        <div class="qr-camera">
+          <video id="qrVideo" playsinline muted autoplay aria-label="Vista de la cámara para escanear el código QR"></video>
+          <div class="qr-frame" aria-hidden="true"></div>
+          <div class="qr-camera-status" id="qrCameraStatus">Iniciando cámara…</div>
+        </div>
+        <div class="qr-help">Permite el acceso a la cámara y coloca el código QR dentro del recuadro. Solo se aceptan IMEI de 15 dígitos.</div>
       </div>
 
       <p class="input-error" id="inputError" role="alert"></p>
@@ -864,69 +884,121 @@ async function consultar(ev) {
 const qrPanel = document.getElementById('qrPanel');
 const btnScanQR = document.getElementById('btnScanQR');
 const btnCloseQR = document.getElementById('btnCloseQR');
-const btnPaste = document.getElementById('btnPaste');
-let qrScanner = null;
-let qrActivo = false;
+const qrVideo = document.getElementById('qrVideo');
+const qrCameraStatus = document.getElementById('qrCameraStatus');
 
-function abrirQR() {
-  if (typeof Html5Qrcode === 'undefined') {
-    mostrarError('No se pudo cargar el escáner QR. Revisa tu conexión e inténtalo de nuevo.');
+let qrStream = null;
+let qrActivo = false;
+let qrFrameRequest = null;
+let qrDetector = null;
+let qrProcesando = false;
+
+function actualizarEstadoQR(texto) {
+  qrCameraStatus.textContent = texto;
+}
+
+async function iniciarEscanerQR() {
+  if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    mostrarError('La cámara requiere una conexión segura (HTTPS).');
     return;
   }
 
-  qrPanel.className = 'qr-panel visible';
-  qrPanel.setAttribute('aria-hidden', 'false');
-  btnScanQR.setAttribute('aria-expanded', 'true');
+  if (!('BarcodeDetector' in window)) {
+    mostrarError('Este navegador no admite escaneo QR directo. Usa Chrome/Edge actualizado en el celular.');
+    return;
+  }
 
-  if (!qrScanner) qrScanner = new Html5Qrcode('qr-reader');
+  try {
+    const formatos = await BarcodeDetector.getSupportedFormats();
+    if (!formatos.includes('qr_code')) {
+      throw new Error('QR no compatible');
+    }
 
-  qrScanner.start(
-    { facingMode: { exact: 'environment' } },
-    { fps: 10, qrbox: { width: 230, height: 230 }, aspectRatio: 1 },
-    (decodedText) => {
-      const imei = sanitizarImei(decodedText);
-      if (validarImei(imei)) {
-        inputEl.value = imei;
-        limpiarError();
-        cerrarQR();
-        // Consulta automáticamente para reducir pasos en móvil.
-        setTimeout(() => document.getElementById('imeiForm').requestSubmit(), 120);
-      } else {
-        mostrarError('El QR fue leído, pero no contiene un IMEI válido de 15 dígitos.');
-      }
-    },
-    () => {}
-  ).then(() => {
+    qrDetector = new BarcodeDetector({ formats: ['qr_code'] });
+
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+
+    qrVideo.srcObject = qrStream;
+    await qrVideo.play();
     qrActivo = true;
-  }).catch(() => {
-    // Algunos móviles no aceptan facingMode exact: usa cualquier cámara disponible.
-    qrScanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 230, height: 230 }, aspectRatio: 1 },
-      (decodedText) => {
-        const imei = sanitizarImei(decodedText);
+    actualizarEstadoQR('Apunta al código QR del IMEI');
+    escanearFrameQR();
+  } catch (error) {
+    console.error('Error al abrir cámara:', error);
+    detenerEscanerQR();
+    mostrarError('No fue posible acceder a la cámara. Verifica el permiso del navegador y vuelve a intentarlo.');
+  }
+}
+
+async function escanearFrameQR() {
+  if (!qrActivo || !qrDetector || !qrVideo.videoWidth) return;
+
+  if (!qrProcesando) {
+    qrProcesando = true;
+    try {
+      const codigos = await qrDetector.detect(qrVideo);
+      if (codigos.length) {
+        const valor = codigos[0].rawValue || '';
+        const imei = sanitizarImei(valor);
+
         if (validarImei(imei)) {
           inputEl.value = imei;
           limpiarError();
-          cerrarQR();
-          setTimeout(() => document.getElementById('imeiForm').requestSubmit(), 120);
-        } else {
-          mostrarError('El QR fue leído, pero no contiene un IMEI válido de 15 dígitos.');
+          actualizarEstadoQR('✓ IMEI detectado');
+          detenerEscanerQR();
+          inputEl.focus();
+          return;
         }
-      },
-      () => {}
-    ).then(() => { qrActivo = true; }).catch(() => {
-      cerrarQR();
-      mostrarError('No fue posible acceder a la cámara. Verifica los permisos del navegador.');
-    });
-  });
+
+        actualizarEstadoQR('QR detectado, pero no contiene un IMEI de 15 dígitos');
+      }
+    } catch (error) {
+      // Continúa intentando en el siguiente frame.
+    } finally {
+      qrProcesando = false;
+    }
+  }
+
+  if (qrActivo) {
+    qrFrameRequest = requestAnimationFrame(escanearFrameQR);
+  }
 }
 
-async function cerrarQR() {
-  if (qrScanner && qrActivo) {
-    try { await qrScanner.stop(); } catch (e) {}
-    qrActivo = false;
+function detenerEscanerQR() {
+  qrActivo = false;
+  qrProcesando = false;
+
+  if (qrFrameRequest) {
+    cancelAnimationFrame(qrFrameRequest);
+    qrFrameRequest = null;
   }
+
+  if (qrStream) {
+    qrStream.getTracks().forEach(track => track.stop());
+    qrStream = null;
+  }
+
+  qrVideo.srcObject = null;
+}
+
+async function abrirQR() {
+  limpiarError();
+  qrPanel.className = 'qr-panel visible';
+  qrPanel.setAttribute('aria-hidden', 'false');
+  btnScanQR.setAttribute('aria-expanded', 'true');
+  actualizarEstadoQR('Solicitando acceso a la cámara…');
+  await iniciarEscanerQR();
+}
+
+function cerrarQR() {
+  detenerEscanerQR();
   qrPanel.className = 'qr-panel';
   qrPanel.setAttribute('aria-hidden', 'true');
   btnScanQR.setAttribute('aria-expanded', 'false');
@@ -955,6 +1027,8 @@ btnPaste.addEventListener('click', async () => {
 window.addEventListener('pagehide', () => {
   if (qrScanner && qrActivo) qrScanner.stop().catch(() => {});
 });
+
+window.addEventListener('pagehide', detenerEscanerQR);
 
 document.getElementById('imeiForm').addEventListener('submit', consultar);
 </script>
