@@ -3,191 +3,374 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>API IMEI Colombia</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
 <style>
+  /* ═══ Tema oscuro (por defecto) ═══ */
   :root {
     --bg:      #0a0a0f;
     --surface: #13131a;
     --border:  #1e1e2e;
     --accent:  #00ff88;
+    --accent-contrast: #0a0a0f;
     --danger:  #ff3e6c;
     --warning: #ff9900;
     --info:    #3e9eff;
     --text:    #e8e8f0;
-    --muted:   #6b6b7e;
-    --mono:    'Space Mono', monospace;
-    --sans:    'Syne', sans-serif;
+    --muted:   #8a8a9c;
+    --focus:   #3e9eff;
     --pad:     clamp(16px, 4vw, 32px);
   }
 
+  /* ═══ Tema claro — automático según el sistema ═══ */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:      #f6f6f2;
+      --surface: #ffffff;
+      --border:  #dcdce2;
+      --accent:  #00875f;
+      --accent-contrast: #ffffff;
+      --danger:  #c81e46;
+      --warning: #a15c00;
+      --info:    #1f5fc4;
+      --text:    #14141c;
+      --muted:   #5c5c6e;
+      --focus:   #1f5fc4;
+    }
+  }
+
+  /* ═══ Tema claro/oscuro forzado manualmente (botón) ═══ */
+  :root[data-theme="light"] {
+    --bg:      #f6f6f2;
+    --surface: #ffffff;
+    --border:  #dcdce2;
+    --accent:  #00875f;
+    --accent-contrast: #ffffff;
+    --danger:  #c81e46;
+    --warning: #a15c00;
+    --info:    #1f5fc4;
+    --text:    #14141c;
+    --muted:   #5c5c6e;
+    --focus:   #1f5fc4;
+  }
+  :root[data-theme="dark"] {
+    --bg:      #0a0a0f;
+    --surface: #13131a;
+    --border:  #1e1e2e;
+    --accent:  #00ff88;
+    --accent-contrast: #0a0a0f;
+    --danger:  #ff3e6c;
+    --warning: #ff9900;
+    --info:    #3e9eff;
+    --text:    #e8e8f0;
+    --muted:   #8a8a9c;
+    --focus:   #3e9eff;
+  }
+
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior:smooth;
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior:auto; }
+    *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
+    background:var(--bg); color:var(--text);
+    font-family:'Syne',sans-serif;
+    min-height:100%; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    transition:background-color .2s ease, color .2s ease;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   body::before {
-    content:'';
-    position:fixed; inset:0;
+    content:''; position:fixed; inset:0;
     background-image:
-      linear-gradient(rgba(0,255,136,.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,255,136,.025) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events:none; z-index:0;
+      linear-gradient(rgba(128,128,140,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(128,128,140,.06) 1px, transparent 1px);
+    background-size:40px 40px; pointer-events:none; z-index:0;
   }
 
+  /* ── Accesibilidad: foco visible siempre, en todos los elementos interactivos ── */
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  /* Quitar el outline solo cuando el foco NO viene de teclado */
+  a:focus:not(:focus-visible), button:focus:not(:focus-visible), input:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* ── Skip link ── */
+  .skip-link {
+    position:absolute; left:-9999px; top:0; z-index:100;
+    background:var(--accent); color:var(--accent-contrast);
+    font-family:'Space Mono',monospace; font-size:13px; font-weight:700;
+    padding:10px 16px; letter-spacing:1px;
+  }
+  .skip-link:focus { left:var(--pad); top:var(--pad); }
+
   .container {
-    max-width: 680px;
-    margin: 0 auto;
-    padding: clamp(24px, 6vw, 52px) var(--pad);
-    position: relative;
-    z-index: 1;
+    max-width:680px; margin:0 auto;
+    padding:clamp(24px,6vw,52px) var(--pad);
+    position:relative; z-index:1;
   }
 
   /* ── Header ── */
-  header { margin-bottom: clamp(28px, 5vw, 48px); }
+  header {
+    margin-bottom:clamp(28px,5vw,48px);
+    display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+  }
+
+  .header-text { min-width:0; }
 
   .badge {
-    font-family: var(--mono);
-    font-size: clamp(9px, 2vw, 10px);
-    letter-spacing: 3px;
-    color: var(--accent);
-    border: 1px solid rgba(0,255,136,.3);
-    display: inline-block;
-    padding: 4px 10px;
-    margin-bottom: 14px;
+    font-family:'Space Mono',monospace;
+    font-size:clamp(9px,2vw,10px); letter-spacing:3px;
+    color:var(--accent); border:1px solid var(--accent);
+    display:inline-block; padding:4px 10px; margin-bottom:14px;
+    opacity:.85;
   }
 
   h1 {
-    font-size: clamp(26px, 7vw, 52px);
-    font-weight: 800;
-    line-height: 1.05;
-    letter-spacing: -2px;
+    font-size:clamp(26px,7vw,52px); font-weight:800;
+    line-height:1.05; letter-spacing:-2px;
   }
-  h1 span { color: var(--accent); }
+  h1 span { color:var(--accent); }
 
   .subtitle {
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: clamp(10px, 2.5vw, 12px);
-    margin-top: 10px;
-    line-height: 1.7;
+    color:var(--muted); font-family:'Space Mono',monospace;
+    font-size:clamp(10px,2.5vw,12px); margin-top:10px; line-height:1.7;
+  }
+
+  /* ── Botón de tema ── */
+  .theme-toggle {
+    flex-shrink:0; width:44px; height:44px; min-height:44px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); cursor:pointer; padding:0;
+    transition:border-color .15s;
+  }
+  .theme-toggle:hover { border-color:var(--accent); }
+  .theme-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
+  .theme-toggle .icon-moon { display:none; }
+  :root[data-theme="light"] .theme-toggle .icon-sun,
+  :root:not([data-theme]) .theme-toggle .icon-sun { display:block; }
+  :root[data-theme="light"] .theme-toggle .icon-moon,
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display:none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display:block; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) .theme-toggle .icon-sun { display:block; }
+    :root:not([data-theme]) .theme-toggle .icon-moon { display:none; }
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .theme-toggle .icon-sun { display:none; }
+    :root:not([data-theme]) .theme-toggle .icon-moon { display:block; }
+  }
+
+
+  /* ═══ UI móvil / escáner QR ═══ */
+  .mobile-hero {
+    display:flex; align-items:center; gap:14px; margin:-4px 0 18px;
+    padding:14px 16px; border:1px solid var(--border);
+    background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--surface)), var(--surface));
+    border-radius:16px;
+  }
+  .hero-icon {
+    width:44px; height:44px; flex:0 0 44px; border-radius:12px;
+    display:grid; place-items:center; background:var(--accent); color:var(--accent-contrast);
+  }
+  .hero-icon svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:2; }
+  .hero-copy strong { display:block; font-size:14px; margin-bottom:3px; }
+  .hero-copy span { color:var(--muted); font-family:'Space Mono',monospace; font-size:10px; line-height:1.45; }
+
+  .card { border-radius:18px; box-shadow:0 8px 30px rgba(0,0,0,.08); }
+  .card::before { border-radius:18px 18px 0 0; }
+  .input-wrap { gap:10px; }
+  input[type="text"], button { border-radius:12px; }
+  input[type="text"] { min-height:54px; }
+  button { min-height:54px; border-radius:12px; }
+
+  .action-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;
+  }
+  .action-btn {
+    width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+    min-height:50px; padding:12px 10px; border:1px solid var(--border);
+    background:var(--surface); color:var(--text); text-transform:none;
+    letter-spacing:.5px; font-size:11px; border-radius:12px;
+  }
+  .action-btn.primary {
+    background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);
+  }
+  .action-btn:hover:not(:disabled) { filter:brightness(1.05); transform:translateY(-1px); }
+  .action-btn svg { width:19px; height:19px; flex:0 0 19px; stroke:currentColor; fill:none; stroke-width:2; }
+
+  .qr-panel {
+    display:none; margin-top:14px; overflow:hidden; border:1px solid var(--border);
+    border-radius:16px; background:var(--bg);
+  }
+  .qr-panel.visible { display:block; animation:fadeIn .2s ease; }
+  .qr-head {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 14px; border-bottom:1px solid var(--border);
+  }
+  .qr-head strong { font-size:12px; }
+  .qr-close {
+    width:36px; min-height:36px; height:36px; padding:0; border-radius:10px;
+    background:transparent; color:var(--text); border:1px solid var(--border);
+    display:grid; place-items:center;
+  }
+  .qr-close svg { width:17px; height:17px; }
+  #qr-reader { width:100%; border:0 !important; }
+  #qr-reader video { width:100% !important; height:auto !important; max-height:58vh; object-fit:cover; }
+  #qr-reader__dashboard { padding:12px !important; font-family:'Space Mono',monospace !important; }
+  #qr-reader__dashboard button {
+    width:100% !important; margin:5px 0 !important; border-radius:10px !important;
+    background:var(--accent) !important; color:var(--accent-contrast) !important;
+    border:0 !important; min-height:44px !important;
+  }
+  #qr-reader__status_span { color:var(--muted) !important; font-size:10px !important; }
+  .qr-help {
+    padding:0 14px 14px; color:var(--muted); font-family:'Space Mono',monospace;
+    font-size:9px; line-height:1.5; text-align:center;
+  }
+
+  .result { scroll-margin-top:20px; }
+  .status-bar, .data-block { border-radius:12px; }
+  .status-bar { border-bottom:1px solid; margin-bottom:8px; }
+  .data-block { overflow:hidden; }
+  .reportes-header { border-radius:0; }
+
+  @media (max-width:480px) {
+    .container { padding:18px 14px 28px; }
+    header { margin-bottom:22px; align-items:center; }
+    .badge { margin-bottom:9px; }
+    h1 { font-size:31px; letter-spacing:-1.5px; }
+    .subtitle { font-size:9px; margin-top:7px; }
+    .subtitle br { display:none; }
+    .theme-toggle { width:42px; height:42px; min-height:42px; border-radius:12px; }
+    .mobile-hero { margin-bottom:12px; }
+    .card { padding:15px; margin-bottom:14px; }
+    .card-title { margin-bottom:13px; }
+    .input-wrap { flex-direction:column; }
+    .input-wrap button { width:100%; }
+    .action-grid { grid-template-columns:1fr 1fr; }
+    .action-btn { font-size:10px; }
+    .data-row { grid-template-columns:92px 1fr; }
+    .data-key, .data-val { padding:10px; }
+    footer { margin-top:25px; }
+  }
+
+  @media (max-width:360px) {
+    .action-grid { grid-template-columns:1fr; }
+    .hero-copy span { font-size:9px; }
   }
 
   /* ── Card ── */
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: clamp(16px, 4vw, 26px);
-    margin-bottom: 20px;
-    position: relative;
+    background:var(--surface); border:1px solid var(--border);
+    padding:clamp(16px,4vw,26px); margin-bottom:20px; position:relative;
+    transition:background-color .2s ease, border-color .2s ease;
   }
   .card::before {
-    content:'';
-    position:absolute; top:0; left:0; right:0; height:1px;
-    background: linear-gradient(90deg, var(--accent), transparent);
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,var(--accent),transparent);
   }
   .card-title {
-    font-family: var(--mono);
-    font-size: clamp(9px, 2vw, 11px);
-    letter-spacing: 2px;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 16px;
+    font-family:'Space Mono',monospace; font-size:clamp(9px,2vw,11px);
+    letter-spacing:2px; color:var(--accent); text-transform:uppercase;
+    margin-bottom:16px;
+  }
+
+  /* ── Label (visualmente sutil, pero presente para lectores de pantalla y usuarios) ── */
+  .field-label {
+    display:block; font-family:'Space Mono',monospace;
+    font-size:clamp(10px,2.2vw,11px); color:var(--muted);
+    letter-spacing:1px; margin-bottom:8px;
   }
 
   /* ── Input ── */
-  .input-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  @media (min-width: 480px) {
-    .input-wrap { flex-direction: row; }
-  }
+  .input-wrap { display:flex; flex-direction:column; gap:10px; }
+  @media(min-width:480px){ .input-wrap{ flex-direction:row; } }
 
   input[type="text"] {
-    flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: clamp(14px, 3.5vw, 16px);
-    padding: 14px 16px;
-    letter-spacing: 2px;
-    outline: none;
-    transition: border-color .2s;
-    width: 100%;
-    min-height: 50px;
+    flex:1; background:var(--bg); border:1px solid var(--border);
+    color:var(--text); font-family:'Space Mono',monospace;
+    font-size:clamp(14px,3.5vw,16px); padding:14px 16px;
+    letter-spacing:2px; outline:none; transition:border-color .2s;
+    width:100%; min-height:50px;
   }
-  input[type="text"]:focus      { border-color: var(--accent); }
-  input[type="text"]::placeholder { color: var(--muted); letter-spacing:1px; }
+  input[type="text"]:focus      { border-color:var(--accent); }
+  input[type="text"]::placeholder { color:var(--muted); letter-spacing:1px; opacity:.7; }
+  input[type="text"][aria-invalid="true"] { border-color:var(--danger); }
 
   button {
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    font-family: var(--mono);
-    font-size: clamp(11px, 2.5vw, 12px);
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 14px 24px;
-    cursor: pointer;
-    transition: all .15s;
-    white-space: nowrap;
-    min-height: 50px;
-    width: 100%;
+    background:var(--accent); color:var(--accent-contrast); border:none;
+    font-family:'Space Mono',monospace; font-size:clamp(11px,2.5vw,12px);
+    font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    padding:14px 24px; cursor:pointer; transition:all .15s;
+    white-space:nowrap; min-height:50px; width:100%;
   }
-  @media (min-width: 480px) { button { width: auto; } }
-  button:hover    { background: #00e07a; transform: translateY(-1px); }
-  button:active   { transform: translateY(0); }
-  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  @media(min-width:480px){ button{ width:auto; } }
+  button:hover:not(:disabled)   { filter:brightness(1.1); transform:translateY(-1px); }
+  button:active:not(:disabled) { transform:translateY(0); }
+  button:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+
+  /* ── Error de validación ── */
+  .input-error {
+    display:none; font-family:'Space Mono',monospace;
+    font-size:clamp(10px,2.3vw,11px); color:var(--danger); padding:8px 0 0;
+    letter-spacing:.5px;
+  }
+  .input-error.visible { display:block; }
 
   /* ── Loading ── */
   .loading {
-    display: none;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    padding: 14px 0 4px;
+    display:none; align-items:center; gap:8px;
+    font-family:'Space Mono',monospace;
+    font-size:11px; color:var(--accent); letter-spacing:2px; padding:14px 0 4px;
   }
-  .loading::after { content:''; animation: dots 1.5s infinite; }
-  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+  .loading.visible { display:flex; }
+  .loading-dot {
+    width:6px; height:6px; border-radius:50%; background:var(--accent);
+    animation:blink 1.4s infinite ease-in-out both;
+  }
+  .loading-dot:nth-child(2){ animation-delay:.2s; }
+  .loading-dot:nth-child(3){ animation-delay:.4s; }
+  @keyframes blink{ 0%,80%,100%{opacity:.25} 40%{opacity:1} }
 
   /* ── Result ── */
-  .result { display: none; margin-top: 18px; }
-  .result.visible { display: block; animation: fadeIn .3s ease; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .result { display:none; margin-top:18px; }
+  .result.visible { display:block; animation:fadeIn .3s ease; }
+  @keyframes fadeIn{ from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
+  /* Status bar */
   .status-bar {
-    display: flex; align-items: center; gap: 12px;
-    padding: 13px 16px; border: 1px solid; border-bottom: none;
-    flex-wrap: wrap;
+    display:flex; align-items:center; gap:12px;
+    padding:13px 16px; border:1px solid; border-bottom:none; flex-wrap:wrap;
   }
-  .status-bar.LIMPIO                { border-color:var(--accent);  background:rgba(0,255,136,.06); }
-  .status-bar.ROBO_HURTO            { border-color:var(--danger);  background:rgba(255,62,108,.06); }
-  .status-bar.BLOQUEO_NO_REGISTRADO { border-color:var(--danger);  background:rgba(255,62,108,.06); }
-  .status-bar.DUPLICADO             { border-color:var(--warning); background:rgba(255,153,0,.06); }
-  .status-bar.REINCIDENTE           { border-color:var(--warning); background:rgba(255,153,0,.06); }
-  .status-bar.PERDIDA               { border-color:var(--danger);  background:rgba(255,62,108,.06); }
-  .status-bar.MULTIPLE              { border-color:var(--danger);  background:rgba(255,62,108,.06); }
-  .status-bar.OTRO                  { border-color:var(--warning); background:rgba(255,153,0,.06); }
-  .status-bar.ERROR                 { border-color:var(--muted);   background:rgba(107,107,126,.06); }
+  .status-bar.LIMPIO                { border-color:var(--accent);  background:color-mix(in srgb, var(--accent) 8%, transparent); }
+  .status-bar.ROBO_HURTO            { border-color:var(--danger);  background:color-mix(in srgb, var(--danger) 8%, transparent); }
+  .status-bar.BLOQUEO_NO_REGISTRADO { border-color:var(--danger);  background:color-mix(in srgb, var(--danger) 8%, transparent); }
+  .status-bar.DUPLICADO             { border-color:var(--warning); background:color-mix(in srgb, var(--warning) 8%, transparent); }
+  .status-bar.REINCIDENTE           { border-color:var(--warning); background:color-mix(in srgb, var(--warning) 8%, transparent); }
+  .status-bar.PERDIDA               { border-color:var(--danger);  background:color-mix(in srgb, var(--danger) 8%, transparent); }
+  .status-bar.MULTIPLE              { border-color:var(--danger);  background:color-mix(in srgb, var(--danger) 8%, transparent); }
+  .status-bar.OTRO                  { border-color:var(--warning); background:color-mix(in srgb, var(--warning) 8%, transparent); }
+  .status-bar.ERROR                 { border-color:var(--muted);   background:color-mix(in srgb, var(--muted) 8%, transparent); }
 
   .status-dot {
     width:10px; height:10px; border-radius:50%;
     flex-shrink:0; animation:pulse 2s infinite;
   }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.3} }
   .LIMPIO .status-dot                { background:var(--accent); }
   .ROBO_HURTO .status-dot            { background:var(--danger); }
   .BLOQUEO_NO_REGISTRADO .status-dot { background:var(--danger); }
@@ -198,9 +381,8 @@
   .ERROR .status-dot                 { background:var(--muted); animation:none; }
 
   .status-label {
-    font-family:var(--mono);
-    font-size: clamp(12px, 3vw, 14px);
-    font-weight:700; letter-spacing:2px; flex:1;
+    font-family:'Space Mono',monospace;
+    font-size:clamp(12px,3vw,14px); font-weight:700; letter-spacing:2px; flex:1;
   }
   .LIMPIO .status-label                { color:var(--accent); }
   .ROBO_HURTO .status-label            { color:var(--danger); }
@@ -212,62 +394,63 @@
   .ERROR .status-label                 { color:var(--muted); }
 
   .status-badge {
-    font-family:var(--mono); font-size:10px;
+    font-family:'Space Mono',monospace; font-size:10px;
     font-weight:700; padding:2px 7px; border:1px solid;
   }
 
+  /* Data block */
   .data-block { border:1px solid var(--border); overflow:hidden; }
   .data-row {
-    display: grid;
-    grid-template-columns: 110px 1fr;
-    border-bottom: 1px solid var(--border);
+    display:grid; grid-template-columns:110px 1fr;
+    border-bottom:1px solid var(--border);
   }
-  .data-row:last-child { border-bottom: none; }
-  @media (max-width: 380px) { .data-row { grid-template-columns: 90px 1fr; } }
+  .data-row:last-child { border-bottom:none; }
+  @media(max-width:380px){ .data-row{ grid-template-columns:85px 1fr; } }
 
   .data-key {
-    font-family:var(--mono); font-size:clamp(9px,2vw,10px);
+    font-family:'Space Mono',monospace; font-size:clamp(9px,2vw,10px);
     color:var(--muted); letter-spacing:1px; text-transform:uppercase;
-    padding:10px 12px; background:rgba(255,255,255,.02);
+    padding:10px 12px; background:color-mix(in srgb, var(--text) 3%, transparent);
     border-right:1px solid var(--border);
     display:flex; align-items:center; word-break:break-word;
   }
   .data-val {
-    font-family:var(--mono); font-size:clamp(11px,2.5vw,12px);
-    color:var(--text); padding:10px 12px;
-    word-break:break-word; line-height:1.5;
+    font-family:'Space Mono',monospace; font-size:clamp(11px,2.5vw,12px);
+    color:var(--text); padding:10px 12px; word-break:break-word; line-height:1.5;
   }
   .data-val.green { color:var(--accent); }
   .data-val.red   { color:var(--danger); }
 
+  /* Tags */
   .tags { display:flex; flex-wrap:wrap; gap:6px; padding:9px 12px; }
   .tag {
-    font-family:var(--mono); font-size:clamp(9px,2vw,10px);
+    font-family:'Space Mono',monospace; font-size:clamp(9px,2vw,10px);
     font-weight:700; padding:3px 7px; letter-spacing:.5px;
   }
-  .tag.danger  { background:rgba(255,62,108,.12);  color:var(--danger);  border:1px solid rgba(255,62,108,.3); }
-  .tag.warning { background:rgba(255,153,0,.12);   color:var(--warning); border:1px solid rgba(255,153,0,.3); }
-  .tag.info    { background:rgba(62,158,255,.12);  color:var(--info);    border:1px solid rgba(62,158,255,.3); }
-  .tag.muted   { background:rgba(107,107,126,.12); color:var(--muted);   border:1px solid rgba(107,107,126,.3); }
+  .tag.danger  { background:color-mix(in srgb, var(--danger) 14%, transparent);  color:var(--danger);  border:1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+  .tag.warning { background:color-mix(in srgb, var(--warning) 14%, transparent); color:var(--warning); border:1px solid color-mix(in srgb, var(--warning) 35%, transparent); }
+  .tag.info    { background:color-mix(in srgb, var(--info) 14%, transparent);    color:var(--info);    border:1px solid color-mix(in srgb, var(--info) 35%, transparent); }
+  .tag.muted   { background:color-mix(in srgb, var(--muted) 14%, transparent);   color:var(--muted);   border:1px solid color-mix(in srgb, var(--muted) 35%, transparent); }
 
+  /* Reportes */
   .reportes-header {
-    font-family:var(--mono); font-size:clamp(9px,2vw,10px);
+    font-family:'Space Mono',monospace; font-size:clamp(9px,2vw,10px);
     color:var(--danger); letter-spacing:1.5px; text-transform:uppercase;
-    padding:7px 12px; background:rgba(255,62,108,.06);
-    border-top:1px solid rgba(255,62,108,.25);
-    border-bottom:1px solid rgba(255,62,108,.25);
+    padding:7px 12px; background:color-mix(in srgb, var(--danger) 8%, transparent);
+    border-top:1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+    border-bottom:1px solid color-mix(in srgb, var(--danger) 25%, transparent);
   }
   .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .reportes-table { width:100%; border-collapse:collapse; min-width:300px; }
+  .reportes-table { width:100%; border-collapse:collapse; min-width:290px; }
   .reportes-table th {
-    font-family:var(--mono); font-size:clamp(8px,2vw,9px);
+    font-family:'Space Mono',monospace; font-size:clamp(8px,2vw,9px);
     color:var(--muted); letter-spacing:1.5px; text-transform:uppercase;
     text-align:left; padding:8px 12px;
     border-bottom:1px solid var(--border);
-    background:rgba(255,255,255,.02); white-space:nowrap;
+    background:color-mix(in srgb, var(--text) 3%, transparent); white-space:nowrap;
   }
   .reportes-table td {
-    font-family:var(--mono); font-size:clamp(10px,2.5vw,11px);
+    font-family:'Space Mono',monospace; font-size:clamp(10px,2.5vw,11px);
     padding:9px 12px; border-bottom:1px solid var(--border);
     vertical-align:top; word-break:break-word;
   }
@@ -275,75 +458,222 @@
   .reportes-table .num { color:var(--muted); width:26px; }
 
   .causal-chip {
-    display:inline-block; font-family:var(--mono);
+    display:inline-block; font-family:'Space Mono',monospace;
     font-size:clamp(8px,2vw,9px); font-weight:700;
     letter-spacing:.5px; padding:2px 6px; border:1px solid; margin-bottom:2px;
   }
-  .causal-chip.danger  { background:rgba(255,62,108,.12); color:var(--danger);  border-color:rgba(255,62,108,.35); }
-  .causal-chip.warning { background:rgba(255,153,0,.12);  color:var(--warning); border-color:rgba(255,153,0,.35); }
-  .causal-chip.muted   { background:rgba(107,107,126,.12);color:var(--muted);   border-color:rgba(107,107,126,.35); }
+  .causal-chip.danger  { background:color-mix(in srgb, var(--danger) 14%, transparent); color:var(--danger);  border-color:color-mix(in srgb, var(--danger) 35%, transparent); }
+  .causal-chip.warning { background:color-mix(in srgb, var(--warning) 14%, transparent);  color:var(--warning); border-color:color-mix(in srgb, var(--warning) 35%, transparent); }
+  .causal-chip.muted   { background:color-mix(in srgb, var(--muted) 14%, transparent);color:var(--muted);   border-color:color-mix(in srgb, var(--muted) 35%, transparent); }
   .causal-sub { color:var(--muted); font-size:10px; margin-top:2px; }
 
-  /* ── Footer ── */
+  /* Footer */
   footer {
-    margin-top: 40px; padding-top: 18px;
-    border-top: 1px solid var(--border);
-    font-family: var(--mono);
-    font-size: clamp(9px, 2vw, 10px);
-    color: var(--muted);
-    display: flex; flex-wrap: wrap;
-    justify-content: space-between; gap: 6px;
+    margin-top:40px; padding-top:18px; border-top:1px solid var(--border);
+    font-family:'Space Mono',monospace; font-size:clamp(9px,2vw,10px);
+    color:var(--muted); display:flex; flex-wrap:wrap;
+    justify-content:space-between; gap:6px;
+  }
+
+  /* ── Pantallas muy pequeñas (≤340px) ── */
+  @media (max-width:340px) {
+    .badge { font-size:8px; letter-spacing:2px; }
+    h1 { letter-spacing:-1px; }
+  }
+
+  /* ── Fallback para navegadores sin color-mix() ── */
+  @supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .data-key, .reportes-table th { background: rgba(128,128,140,.06); }
   }
 </style>
 </head>
 <body>
+
+<a href="#main" class="skip-link">Saltar al contenido principal</a>
+
 <div class="container">
 
   <header>
-    <div class="badge">v2.1.0 · SRTM Colombia</div>
-    <h1>API IMEI<br><span>Colombia</span></h1>
-    <p class="subtitle">
-      Consulta el estado de equipos móviles en la<br>
-      Base de Datos Negativa · Resolución CRC 3128 de 2011
-    </p>
+    <div class="header-text">
+      <div class="badge">v2.1.1 · SRTM Colombia</div>
+      <h1>API IMEI<br><span>Colombia</span></h1>
+      <p class="subtitle">
+        Consulta el estado de equipos móviles en la<br>
+        Base de Datos Negativa · Resolución CRC 3128 de 2011
+      </p>
+    </div>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-pressed="false" aria-label="Cambiar a tema claro">
+      <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+    </button>
   </header>
 
-  <!-- Consulta individual -->
-  <div class="card">
-    <div class="card-title">// Consultar IMEI</div>
-    <div class="input-wrap">
-      <input type="text" id="imeiInput" placeholder="353265110903640"
-             maxlength="15" inputmode="numeric"
-             onkeydown="if(event.key==='Enter') consultar()" autocomplete="off">
-      <button onclick="consultar()" id="btnConsultar">Consultar</button>
-    </div>
-    <div class="loading" id="loading">Consultando SRTM</div>
-    <div class="result" id="result"></div>
-  </div>
+  <main id="main">
+    <section class="mobile-hero" aria-label="Consulta rápida">
+      <div class="hero-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM19 15h1v1h-1zM15 19h2v1h-2zM19 18h1v2h-1z"/></svg>
+      </div>
+      <div class="hero-copy">
+        <strong>Consulta tu IMEI fácilmente</strong>
+        <span>Escríbelo o escanea el código QR de tu equipo.</span>
+      </div>
+    </section>
+
+    <form class="card" id="imeiForm" novalidate>
+      <div class="card-title">// Consultar IMEI</div>
+      <label for="imeiInput" class="field-label">Número IMEI (15 dígitos)</label>
+      <div class="input-wrap">
+        <input type="text" id="imeiInput"
+               name="imei"
+               placeholder="353265110903640"
+               maxlength="15"
+               inputmode="numeric"
+               autocomplete="off"
+               spellcheck="false"
+               aria-describedby="inputError"
+               aria-invalid="false"
+               oninput="limpiarError()">
+        <button type="submit" id="btnConsultar">
+          <span id="btnLabel">Consultar IMEI</span>
+        </button>
+      </div>
+
+      <div class="action-grid">
+        <button type="button" class="action-btn primary" id="btnScanQR" aria-expanded="false" aria-controls="qrPanel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM14 14h2v2h-2zM18 18h1"/></svg>
+          <span>Escanear QR</span>
+        </button>
+        <button type="button" class="action-btn" id="btnPaste" aria-label="Pegar IMEI desde el portapapeles">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="15" rx="2"/><path d="M9 5V4h6v1M9 10h6M9 14h6"/></svg>
+          <span>Pegar IMEI</span>
+        </button>
+      </div>
+
+      <div class="qr-panel" id="qrPanel" aria-hidden="true">
+        <div class="qr-head">
+          <strong>Escanear código QR</strong>
+          <button type="button" class="qr-close" id="btnCloseQR" aria-label="Cerrar escáner">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div id="qr-reader"></div>
+        <div class="qr-help">Permite el acceso a la cámara y coloca el código QR dentro del recuadro.</div>
+      </div>
+
+      <p class="input-error" id="inputError" role="alert"></p>
+      <p class="loading" id="loading" role="status" aria-live="polite">
+        <span class="loading-dot" aria-hidden="true"></span><span class="loading-dot" aria-hidden="true"></span><span class="loading-dot" aria-hidden="true"></span>
+        Consultando SRTM
+      </p>
+      <div class="result" id="result" aria-live="polite"></div>
+    </form>
+  </main>
 
   <footer>
     <span>Fuente: imeicolombia.com.co · Inetum · CRC</span>
-    <span>FastAPI 2.1.0</span>
+    <span>FastAPI 2.1.1</span>
   </footer>
 
 </div>
 
 <script>
-const BASE = '';
+// ── Tema: respeta preferencia del sistema, permite override manual persistente ──
+
+const THEME_KEY = 'imei-colombia-theme';
+const root = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+
+function aplicarTema(theme) {
+  // theme: 'light' | 'dark' | null (null = seguir el sistema)
+  if (theme) {
+    root.setAttribute('data-theme', theme);
+  } else {
+    root.removeAttribute('data-theme');
+  }
+  const esOscuroActivo = theme
+    ? theme === 'dark'
+    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  themeToggle.setAttribute('aria-pressed', String(!esOscuroActivo));
+  themeToggle.setAttribute('aria-label', esOscuroActivo ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+}
+
+// Preferencia guardada, si existe
+let temaGuardado = null;
+try { temaGuardado = localStorage.getItem(THEME_KEY); } catch (e) { /* almacenamiento no disponible */ }
+aplicarTema(temaGuardado);
+
+// Si el usuario no eligió manualmente, seguir cambios del sistema en vivo
+const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+mqDark.addEventListener('change', () => {
+  if (!temaGuardado) aplicarTema(null);
+});
+
+themeToggle.addEventListener('click', () => {
+  const esOscuroActivo = temaGuardado
+    ? temaGuardado === 'dark'
+    : mqDark.matches;
+  temaGuardado = esOscuroActivo ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, temaGuardado); } catch (e) { /* almacenamiento no disponible */ }
+  aplicarTema(temaGuardado);
+});
+
+// ── Seguridad cliente ─────────────────────────────────────────────────────────
+
+// 1. Sanitizar: elimina CUALQUIER cosa que no sea dígito
+function sanitizarImei(raw) {
+  return raw.replace(/[^0-9]/g, '').slice(0, 15);
+}
+
+// 2. Validar: exactamente 15 dígitos numéricos
+function validarImei(imei) {
+  return /^\d{15}$/.test(imei);
+}
+
+// 3. Escapar HTML para evitar XSS al renderizar respuestas del servidor
+function esc(str) {
+  if (typeof str !== 'string') return String(str ?? '');
+  return str
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// 4. Rate limit cliente: máx 1 consulta cada 3 segundos
+let _lastQuery = 0;
+let _consultando = false;
+
+const inputEl = document.getElementById('imeiInput');
+const errorEl = document.getElementById('inputError');
+
+function limpiarError() {
+  errorEl.className = 'input-error';
+  errorEl.textContent = '';
+  inputEl.setAttribute('aria-invalid', 'false');
+}
+
+function mostrarError(msg) {
+  errorEl.textContent = msg;
+  errorEl.className = 'input-error visible';
+  inputEl.setAttribute('aria-invalid', 'true');
+}
+
+// ── Estados ───────────────────────────────────────────────────────────────────
 
 const ESTADOS = {
-  LIMPIO:                { label:'✓ LIMPIO',             cls:'c-green'   },
-  ROBO_HURTO:            { label:'✗ ROBO / HURTO',       cls:'c-red'     },
-  BLOQUEO_NO_REGISTRADO: { label:'✗ BLOQUEO / NO REG.',  cls:'c-red'     },
-  DUPLICADO:             { label:'⚠ DUPLICADO',          cls:'c-warning' },
-  REINCIDENTE:           { label:'⚠ REINCIDENTE',        cls:'c-warning' },
-  PERDIDA:               { label:'✗ PÉRDIDA',            cls:'c-red'     },
-  MULTIPLE:              { label:'⚠ MÚLTIPLES REPORTES', cls:'c-red'     },
-  OTRO:                  { label:'⚠ OTRO',               cls:'c-warning' },
-  ERROR:                 { label:'? ERROR',              cls:'c-muted'   },
+  LIMPIO:                { label:'✓ LIMPIO',             cls:'green'   },
+  ROBO_HURTO:            { label:'✗ ROBO / HURTO',       cls:'red'     },
+  BLOQUEO_NO_REGISTRADO: { label:'✗ BLOQUEO / NO REG.',  cls:'red'     },
+  DUPLICADO:             { label:'⚠ DUPLICADO',          cls:'' },
+  REINCIDENTE:           { label:'⚠ REINCIDENTE',        cls:'' },
+  PERDIDA:               { label:'✗ PÉRDIDA',            cls:'red'     },
+  MULTIPLE:              { label:'⚠ MÚLTIPLES REPORTES', cls:'red'     },
+  OTRO:                  { label:'⚠ OTRO',               cls:'' },
+  ERROR:                 { label:'? ERROR',              cls:''   },
 };
 
-function estadoInfo(e) { return ESTADOS[e] || { label:e, cls:'c-muted' }; }
+function estadoInfo(e) { return ESTADOS[e] || { label: esc(e), cls:'' }; }
 
 function causalCls(c) {
   if (['ROBO_HURTO','BLOQUEO_NO_REGISTRADO','PERDIDA'].includes(c)) return 'danger';
@@ -351,64 +681,77 @@ function causalCls(c) {
   return 'muted';
 }
 
+// ── Render resultado ──────────────────────────────────────────────────────────
+
 function renderResult(data, container) {
-  const estado = data.estado || 'ERROR';
+  if (!data || typeof data !== 'object') {
+    data = { estado:'ERROR', imei:'', en_base_negativa:false,
+             causales:[], operadores:[], reportes:[], total_reportes:0,
+             resumen:'Respuesta inválida del servidor.' };
+  }
+
+  const estado = /^[A-Z_]+$/.test(data.estado || '') ? (data.estado || 'ERROR') : 'ERROR';
   const info   = estadoInfo(estado);
 
-  let badge = data.total_reportes > 1
-    ? `<span class="status-badge" style="border-color:currentColor;color:inherit">${data.total_reportes} reportes</span>`
+  const imei    = esc(data.imei    || '—');
+  const resumen = esc(data.resumen || '—');
+
+  let badge = (data.total_reportes > 1)
+    ? `<span class="status-badge" style="border-color:currentColor;color:inherit">${+data.total_reportes} reportes</span>`
     : '';
 
   let rows = `
-    <div class="data-row">
-      <div class="data-key">IMEI</div>
-      <div class="data-val">${data.imei || '—'}</div>
-    </div>
-    <div class="data-row">
-      <div class="data-key">ESTADO</div>
-      <div class="data-val ${info.cls}">${info.label}</div>
-    </div>
+    <div class="data-row"><div class="data-key">IMEI</div><div class="data-val">${imei}</div></div>
+    <div class="data-row"><div class="data-key">ESTADO</div><div class="data-val ${esc(info.cls)}">${esc(info.label)}</div></div>
     <div class="data-row">
       <div class="data-key">BASE NEG.</div>
       <div class="data-val ${data.en_base_negativa ? 'red' : 'green'}">
         ${data.en_base_negativa ? 'Sí — equipo bloqueado' : 'No — equipo libre'}
       </div>
-    </div>
-  `;
+    </div>`;
 
-  if (data.causales?.length) {
-    rows += `<div class="data-row"><div class="data-key">CAUSALES</div>
-      <div class="data-val" style="padding:8px 12px">
-        ${data.causales.map(c=>`<span class="tag ${causalCls(c)}">${c.replaceAll('_','/')}</span>`).join('')}
-      </div></div>`;
+  if (Array.isArray(data.causales) && data.causales.length) {
+    const tags = data.causales
+      .filter(c => typeof c === 'string' && /^[A-Z_]+$/.test(c))
+      .map(c => `<span class="tag ${causalCls(c)}">${esc(c.replaceAll('_','/'))}</span>`)
+      .join('');
+    if (tags) rows += `<div class="data-row"><div class="data-key">CAUSALES</div><div class="data-val" style="padding:8px 12px">${tags}</div></div>`;
   }
 
-  if (data.operadores?.length) {
-    rows += `<div class="data-row"><div class="data-key">OPERADORES</div>
-      <div class="data-val" style="padding:8px 12px">
-        ${data.operadores.map(o=>`<span class="tag info">${o}</span>`).join('')}
-      </div></div>`;
+  if (Array.isArray(data.operadores) && data.operadores.length) {
+    const tags = data.operadores
+      .filter(o => typeof o === 'string')
+      .map(o => `<span class="tag info">${esc(o)}</span>`)
+      .join('');
+    if (tags) rows += `<div class="data-row"><div class="data-key">OPERADORES</div><div class="data-val" style="padding:8px 12px">${tags}</div></div>`;
   }
 
-  rows += `<div class="data-row"><div class="data-key">RESUMEN</div>
-    <div class="data-val">${data.resumen || '—'}</div></div>`;
+  rows += `<div class="data-row"><div class="data-key">RESUMEN</div><div class="data-val">${resumen}</div></div>`;
 
   let reportesHtml = '';
-  if (data.reportes?.length) {
-    const filas = data.reportes.map((r,i) => `
-      <tr>
-        <td class="num">${i+1}</td>
-        <td>
-          <div class="causal-chip ${causalCls(r.causal)}">${r.causal.replaceAll('_','/')}</div>
-          <div class="causal-sub">${r.causal_texto}</div>
-        </td>
-        <td>${r.operador}</td>
-      </tr>`).join('');
+  if (Array.isArray(data.reportes) && data.reportes.length) {
+    const filas = data.reportes
+      .filter(r => r && typeof r === 'object')
+      .map((r, i) => {
+        const causal = typeof r.causal === 'string' && /^[A-Z_]+$/.test(r.causal) ? r.causal : 'OTRO';
+        const texto  = esc(r.causal_texto || '');
+        const op     = esc(r.operador     || '');
+        return `<tr>
+          <td class="num">${i + 1}</td>
+          <td>
+            <div class="causal-chip ${causalCls(causal)}">${esc(causal.replaceAll('_','/'))}</div>
+            ${texto ? `<div class="causal-sub">${texto}</div>` : ''}
+          </td>
+          <td>${op}</td>
+        </tr>`;
+      }).join('');
+
     reportesHtml = `
-      <div class="reportes-header">// DETALLE (${data.total_reportes})</div>
+      <div class="reportes-header">// DETALLE (${+data.total_reportes})</div>
       <div class="table-scroll">
         <table class="reportes-table">
-          <thead><tr><th>#</th><th>CAUSAL</th><th>OPERADOR</th></tr></thead>
+          <caption class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Detalle de reportes del IMEI consultado</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">CAUSAL</th><th scope="col">OPERADOR</th></tr></thead>
           <tbody>${filas}</tbody>
         </table>
       </div>`;
@@ -416,55 +759,204 @@ function renderResult(data, container) {
 
   container.className = 'result visible';
   container.innerHTML = `
-    <div class="status-bar ${estado}">
-      <div class="status-dot"></div>
-      <div class="status-label ${info.cls}">${info.label}</div>
+    <div class="status-bar ${esc(estado)}">
+      <div class="status-dot" aria-hidden="true"></div>
+      <div class="status-label">${esc(info.label)}</div>
       ${badge}
     </div>
     <div class="data-block">${rows}${reportesHtml}</div>`;
 }
 
-// Debounce para evitar spam del botón
-let _consultando = false;
+// ── Consultar ─────────────────────────────────────────────────────────────────
 
-async function consultar() {
+async function consultar(ev) {
+  if (ev) ev.preventDefault();
   if (_consultando) return;
-  const imei = document.getElementById('imeiInput').value.replace(/\D/g,'').slice(0,15);
-  if (imei.length !== 15) {
-    document.getElementById('imeiInput').style.borderColor = 'var(--danger)';
-    setTimeout(() => document.getElementById('imeiInput').style.borderColor = '', 1200);
+
+  const ahora = Date.now();
+  if (ahora - _lastQuery < 3000) {
+    mostrarError('Espera un momento antes de consultar de nuevo.');
     return;
   }
 
-  _consultando = true;
-  const btn     = document.getElementById('btnConsultar');
-  const loading = document.getElementById('loading');
-  const result  = document.getElementById('result');
+  const raw  = inputEl.value;
+  const imei = sanitizarImei(raw);
+  inputEl.value = imei;
 
-  btn.disabled = true;
-  loading.style.display = 'block';
-  result.className = 'result';
+  if (!validarImei(imei)) {
+    mostrarError('El IMEI debe tener exactamente 15 dígitos numéricos.');
+    inputEl.focus();
+    return;
+  }
+
+  limpiarError();
+  _consultando = true;
+  _lastQuery   = ahora;
+
+  const btn      = document.getElementById('btnConsultar');
+  const btnLabel = document.getElementById('btnLabel');
+  const loading  = document.getElementById('loading');
+  const result   = document.getElementById('result');
+
+  btn.disabled     = true;
+  btnLabel.textContent = 'Consultando…';
+  loading.className = 'loading visible';
+  result.className  = 'result';
 
   try {
-    const res  = await fetch(`${BASE}/imei/${imei}`, { headers:{ 'Accept':'application/json' } });
+    const res = await fetch(`/imei/${encodeURIComponent(imei)}`, {
+      method:  'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(20000),
+    });
+
     if (res.status === 429) {
-      renderResult({ imei, estado:'ERROR', en_base_negativa:false,
+      renderResult({
+        imei, estado:'ERROR', en_base_negativa:false,
         causales:[], operadores:[], reportes:[], total_reportes:0,
-        resumen:'Demasiadas consultas. Espera un momento e inténtalo de nuevo.' }, result);
+        resumen:'Demasiadas consultas. Espera un momento e inténtalo de nuevo.'
+      }, result);
       return;
     }
+
+    if (res.status === 403) {
+      renderResult({
+        imei, estado:'ERROR', en_base_negativa:false,
+        causales:[], operadores:[], reportes:[], total_reportes:0,
+        resumen:'Acceso bloqueado temporalmente.'
+      }, result);
+      return;
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('Respuesta no válida del servidor.');
+    }
+
     const data = await res.json();
+
+    if (!data || typeof data.estado !== 'string') {
+      throw new Error('Estructura de respuesta inesperada.');
+    }
+
     renderResult(data, result);
-  } catch {
-    renderResult({ imei, estado:'ERROR', en_base_negativa:false,
+
+  } catch (err) {
+    const msg = err.name === 'TimeoutError'
+      ? 'La consulta tardó demasiado. Intenta de nuevo.'
+      : 'No se pudo conectar con el servidor.';
+    renderResult({
+      imei, estado:'ERROR', en_base_negativa:false,
       causales:[], operadores:[], reportes:[], total_reportes:0,
-      resumen:'No se pudo conectar con el servidor.' }, result);
+      resumen: msg
+    }, result);
   } finally {
-    btn.disabled = false;
-    loading.style.display = 'none';
-    _consultando = false;
+    btn.disabled          = false;
+    btnLabel.textContent  = 'Consultar IMEI';
+    loading.className     = 'loading';
+    _consultando          = false;
+    result.focus?.();
   }
 }
+
+
+// ── Escáner QR móvil ──────────────────────────────────────────────────────────
+const qrPanel = document.getElementById('qrPanel');
+const btnScanQR = document.getElementById('btnScanQR');
+const btnCloseQR = document.getElementById('btnCloseQR');
+const btnPaste = document.getElementById('btnPaste');
+let qrScanner = null;
+let qrActivo = false;
+
+function abrirQR() {
+  if (typeof Html5Qrcode === 'undefined') {
+    mostrarError('No se pudo cargar el escáner QR. Revisa tu conexión e inténtalo de nuevo.');
+    return;
+  }
+
+  qrPanel.className = 'qr-panel visible';
+  qrPanel.setAttribute('aria-hidden', 'false');
+  btnScanQR.setAttribute('aria-expanded', 'true');
+
+  if (!qrScanner) qrScanner = new Html5Qrcode('qr-reader');
+
+  qrScanner.start(
+    { facingMode: { exact: 'environment' } },
+    { fps: 10, qrbox: { width: 230, height: 230 }, aspectRatio: 1 },
+    (decodedText) => {
+      const imei = sanitizarImei(decodedText);
+      if (validarImei(imei)) {
+        inputEl.value = imei;
+        limpiarError();
+        cerrarQR();
+        // Consulta automáticamente para reducir pasos en móvil.
+        setTimeout(() => document.getElementById('imeiForm').requestSubmit(), 120);
+      } else {
+        mostrarError('El QR fue leído, pero no contiene un IMEI válido de 15 dígitos.');
+      }
+    },
+    () => {}
+  ).then(() => {
+    qrActivo = true;
+  }).catch(() => {
+    // Algunos móviles no aceptan facingMode exact: usa cualquier cámara disponible.
+    qrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 230, height: 230 }, aspectRatio: 1 },
+      (decodedText) => {
+        const imei = sanitizarImei(decodedText);
+        if (validarImei(imei)) {
+          inputEl.value = imei;
+          limpiarError();
+          cerrarQR();
+          setTimeout(() => document.getElementById('imeiForm').requestSubmit(), 120);
+        } else {
+          mostrarError('El QR fue leído, pero no contiene un IMEI válido de 15 dígitos.');
+        }
+      },
+      () => {}
+    ).then(() => { qrActivo = true; }).catch(() => {
+      cerrarQR();
+      mostrarError('No fue posible acceder a la cámara. Verifica los permisos del navegador.');
+    });
+  });
+}
+
+async function cerrarQR() {
+  if (qrScanner && qrActivo) {
+    try { await qrScanner.stop(); } catch (e) {}
+    qrActivo = false;
+  }
+  qrPanel.className = 'qr-panel';
+  qrPanel.setAttribute('aria-hidden', 'true');
+  btnScanQR.setAttribute('aria-expanded', 'false');
+}
+
+btnScanQR.addEventListener('click', abrirQR);
+btnCloseQR.addEventListener('click', cerrarQR);
+
+btnPaste.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    const imei = sanitizarImei(text);
+    if (!imei) {
+      mostrarError('El portapapeles no contiene un IMEI.');
+      return;
+    }
+    inputEl.value = imei;
+    limpiarError();
+    inputEl.focus();
+  } catch (e) {
+    inputEl.focus();
+    mostrarError('No se pudo acceder al portapapeles. Pega el IMEI manualmente.');
+  }
+});
+
+window.addEventListener('pagehide', () => {
+  if (qrScanner && qrActivo) qrScanner.stop().catch(() => {});
+});
+
+document.getElementById('imeiForm').addEventListener('submit', consultar);
 </script>
 </body>
 </html>
